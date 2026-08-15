@@ -41,7 +41,7 @@ type CartItem = {
 
 function Menu() {
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState(categories[0].id);
+  const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
   const [selected, setSelected] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
