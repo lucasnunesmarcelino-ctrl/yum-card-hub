@@ -80,7 +80,7 @@ function Menu() {
             height={640}
             className="h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
         </div>
 
         <div className="mx-auto -mt-10 max-w-lg px-4">
