@@ -5,6 +5,8 @@ import { Clock, Search, Trash2 } from "lucide-react";
 import banner from "@/assets/banner.jpg";
 import logo from "@/assets/logo.png";
 import { CartBar } from "@/components/menu/CartBar";
+import { CheckoutSheet } from "@/components/menu/CheckoutSheet";
+
 import { ProductCard } from "@/components/menu/ProductCard";
 import { ProductModal } from "@/components/menu/ProductModal";
 import { Button } from "@/components/ui/button";
