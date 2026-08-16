@@ -222,12 +222,27 @@ function Menu() {
               <span>Total</span>
               <span>{formatBRL(total)}</span>
             </div>
-            <Button className="h-12 w-full rounded-full text-base font-bold">
-              Finalizar pedido
+            <Button
+              className="h-12 w-full rounded-full text-base font-bold"
+              disabled={cart.length === 0}
+              onClick={() => {
+                setCartOpen(false);
+                setCheckoutOpen(true);
+              }}
+            >
+              Avançar para o Pagamento
             </Button>
           </div>
         </SheetContent>
       </Sheet>
+
+      <CheckoutSheet
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        items={cart}
+        total={total}
+      />
     </main>
   );
 }
+
