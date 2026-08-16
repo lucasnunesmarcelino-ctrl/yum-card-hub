@@ -72,7 +72,7 @@ function Menu() {
   return (
     <main className="min-h-screen bg-background pb-28">
       <header>
-        <div className="relative h-44 w-full overflow-hidden sm:h-56">
+        <div className="relative h-36 w-full overflow-hidden sm:h-48">
           <img
             src={banner}
             alt={`Fachada do restaurante ${restaurant.name}`}
@@ -80,61 +80,59 @@ function Menu() {
             height={640}
             className="h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
 
-        <div className="mx-auto -mt-10 max-w-lg px-4">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-              <img
-                src={logo}
-                alt={`Logo ${restaurant.name}`}
-                loading="lazy"
-                width={512}
-                height={512}
-                className="h-16 w-16 shrink-0 rounded-full border border-border bg-background object-contain p-1"
-              />
-              <div className="min-w-0">
-                <h1 className="truncate text-lg font-black tracking-tight">{restaurant.name}</h1>
-                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{restaurant.hours}</span>
-                </p>
+        <div className="mx-auto max-w-4xl px-4">
+          <div className="flex flex-col items-center sm:flex-row sm:items-end sm:gap-4">
+            <img
+              src={logo}
+              alt={`Logo ${restaurant.name}`}
+              loading="lazy"
+              width={512}
+              height={512}
+              className="relative z-10 -mt-10 h-20 w-20 rounded-full border-4 border-background bg-background object-contain shadow-md sm:-mt-14 sm:h-28 sm:w-28"
+            />
+            <div className="mt-3 text-center sm:mt-0 sm:text-left">
+              <h1 className="text-xl font-black tracking-tight">{restaurant.name}</h1>
+              <p className="mt-0.5 flex items-center justify-center gap-1.5 text-sm text-muted-foreground sm:justify-start">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span>{restaurant.hours}</span>
+              </p>
+              <span
+                className={cn(
+                  "mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+                  restaurant.open
+                    ? "bg-primary/10 text-primary"
+                    : "bg-destructive/10 text-destructive",
+                )}
+              >
                 <span
                   className={cn(
-                    "mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-                    restaurant.open
-                      ? "bg-primary/10 text-primary"
-                      : "bg-destructive/10 text-destructive",
+                    "h-1.5 w-1.5 rounded-full",
+                    restaurant.open ? "bg-primary" : "bg-destructive",
                   )}
-                >
-                  <span
-                    className={cn(
-                      "h-1.5 w-1.5 rounded-full",
-                      restaurant.open ? "bg-primary" : "bg-destructive",
-                    )}
-                  />
-                  {restaurant.open ? "Aberto Agora" : "Fechado"}
-                </span>
-              </div>
+                />
+                {restaurant.open ? "Aberto Agora" : "Fechado"}
+              </span>
             </div>
+          </div>
 
-            <div className="relative mt-4">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar no cardápio..."
-                aria-label="Buscar produto"
-                className="h-11 rounded-full pl-9"
-              />
-            </div>
+          <div className="relative mt-4">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar no cardápio..."
+              aria-label="Buscar produto"
+              className="h-11 w-full rounded-lg pl-9"
+            />
           </div>
         </div>
       </header>
 
       <nav className="sticky top-0 z-30 mt-4 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto max-w-lg overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mx-auto max-w-4xl overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max gap-2">
             {categories.map((c) => (
               <button
@@ -155,7 +153,7 @@ function Menu() {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-lg space-y-8 px-4 py-6">
+      <div className="mx-auto max-w-4xl space-y-8 px-4 py-6">
         {categories.map((category) => {
           const items = filtered.filter((p) => p.category === category.id);
           if (items.length === 0) return null;
@@ -249,4 +247,3 @@ function Menu() {
     </main>
   );
 }
-
