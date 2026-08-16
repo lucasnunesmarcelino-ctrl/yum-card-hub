@@ -247,4 +247,3 @@ function Menu() {
     </main>
   );
 }
-
