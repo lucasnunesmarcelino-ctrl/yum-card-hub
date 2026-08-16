@@ -5,6 +5,8 @@ import { Clock, Search, Trash2 } from "lucide-react";
 import banner from "@/assets/banner.jpg";
 import logo from "@/assets/logo.png";
 import { CartBar } from "@/components/menu/CartBar";
+import { CheckoutSheet } from "@/components/menu/CheckoutSheet";
+
 import { ProductCard } from "@/components/menu/ProductCard";
 import { ProductModal } from "@/components/menu/ProductModal";
 import { Button } from "@/components/ui/button";
@@ -45,6 +47,8 @@ function Menu() {
   const [selected, setSelected] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const filtered = useMemo(() => {
@@ -222,12 +226,27 @@ function Menu() {
               <span>Total</span>
               <span>{formatBRL(total)}</span>
             </div>
-            <Button className="h-12 w-full rounded-full text-base font-bold">
-              Finalizar pedido
+            <Button
+              className="h-12 w-full rounded-full text-base font-bold"
+              disabled={cart.length === 0}
+              onClick={() => {
+                setCartOpen(false);
+                setCheckoutOpen(true);
+              }}
+            >
+              Avançar para o Pagamento
             </Button>
           </div>
         </SheetContent>
       </Sheet>
+
+      <CheckoutSheet
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        items={cart}
+        total={total}
+      />
     </main>
   );
 }
+
