@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   order: Order;
-  nextLabel?: string;
+  nextLabel?: string | undefined;
   onAdvance: (id: string) => void;
   onDragStart: (id: string) => void;
 };

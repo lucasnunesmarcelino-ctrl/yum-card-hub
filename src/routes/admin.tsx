@@ -43,7 +43,7 @@ function AdminPanel() {
     setOrders((prev) =>
       prev.map((o) => {
         if (o.id !== id) return o;
-        const next = order[Math.min(order.indexOf(o.status) + 1, order.length - 1)];
+        const next = order[Math.min(order.indexOf(o.status) + 1, order.length - 1)]!;
         return { ...o, status: next };
       }),
     );
