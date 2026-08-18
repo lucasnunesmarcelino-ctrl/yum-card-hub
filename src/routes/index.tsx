@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { Clock, Search, Trash2 } from "lucide-react";
+import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 
 import banner from "@/assets/banner.jpg";
 import logo from "@/assets/logo.png";
@@ -12,8 +13,21 @@ import { ProductModal } from "@/components/menu/ProductModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { categories, formatBRL, products, restaurant, type Product } from "@/data/menu";
+import { formatBRL, restaurant, type Category, type Product } from "@/data/menu";
+import { getCategories, getProducts } from "@/lib/menu.functions";
 import { cn } from "@/lib/utils";
+
+const categoriesQuery = () =>
+  queryOptions({
+    queryKey: ["categories"],
+    queryFn: () => getCategories(),
+  });
+
+const productsQuery = () =>
+  queryOptions({
+    queryKey: ["products"],
+    queryFn: () => getProducts(),
+  });
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,6 +45,10 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  loader: ({ context }) => {
+    context.queryClient.ensureQueryData(categoriesQuery());
+    context.queryClient.ensureQueryData(productsQuery());
+  },
   component: Menu,
 });
 
@@ -42,6 +60,9 @@ type CartItem = {
 };
 
 function Menu() {
+  const { data: categories } = useSuspenseQuery(categoriesQuery());
+  const { data: products } = useSuspenseQuery(productsQuery());
+
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
   const [selected, setSelected] = useState<Product | null>(null);
@@ -53,8 +74,8 @@ function Menu() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? products.filter((p) => p.name.toLowerCase().includes(q)) : products;
-  }, [query]);
+    return q ? products.filter((p: Product) => p.name.toLowerCase().includes(q)) : products;
+  }, [query, products]);
 
   const count = cart.reduce((sum, item) => sum + item.quantity, 0);
   const total = cart.reduce((sum, item) => sum + item.quantity * item.product.price, 0);
@@ -68,6 +89,18 @@ function Menu() {
     setActiveCategory(id);
     sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  const groupedByCategory = useMemo(() => {
+    const map = new Map<string, { category: Category; items: Product[] }>();
+    for (const c of categories) {
+      map.set(c.id, { category: c, items: [] });
+    }
+    for (const p of filtered) {
+      const group = map.get(p.categoryId);
+      if (group) group.items.push(p);
+    }
+    return Array.from(map.values()).filter((g) => g.items.length > 0);
+  }, [filtered, categories]);
 
   return (
     <main className="min-h-screen bg-background pb-28">
@@ -134,7 +167,7 @@ function Menu() {
       <nav className="sticky top-0 z-30 mt-4 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto max-w-4xl overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max gap-2">
-            {categories.map((c) => (
+            {categories.map((c: Category) => (
               <button
                 key={c.id}
                 type="button"
@@ -154,27 +187,23 @@ function Menu() {
       </nav>
 
       <div className="mx-auto max-w-4xl space-y-8 px-4 py-6">
-        {categories.map((category) => {
-          const items = filtered.filter((p) => p.category === category.id);
-          if (items.length === 0) return null;
-          return (
-            <section
-              key={category.id}
-              id={category.id}
-              ref={(el) => {
-                sectionRefs.current[category.id] = el;
-              }}
-              className="scroll-mt-20"
-            >
-              <h2 className="mb-3 text-base font-black tracking-tight">{category.name}</h2>
-              <div className="grid gap-3">
-                {items.map((product) => (
-                  <ProductCard key={product.id} product={product} onSelect={setSelected} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {groupedByCategory.map(({ category, items }) => (
+          <section
+            key={category.id}
+            id={category.id}
+            ref={(el) => {
+              sectionRefs.current[category.id] = el;
+            }}
+            className="scroll-mt-20"
+          >
+            <h2 className="mb-3 text-base font-black tracking-tight">{category.name}</h2>
+            <div className="grid gap-3">
+              {items.map((product: Product) => (
+                <ProductCard key={product.id} product={product} onSelect={setSelected} />
+              ))}
+            </div>
+          </section>
+        ))}
 
         {filtered.length === 0 && (
           <p className="py-16 text-center text-sm text-muted-foreground">
