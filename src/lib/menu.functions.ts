@@ -30,7 +30,7 @@ function toProduct(row: Database["public"]["Tables"]["products"]["Row"]): Produc
     name: row.name,
     description: row.description,
     price: row.price,
-    image: imageMap[row.image_url ?? ""] ?? imageMap.burger,
+    image: imageMap[row.image_url ?? "burger"] ?? imageMap["burger"],
     categoryId: row.category_id,
     available: row.available,
   };
