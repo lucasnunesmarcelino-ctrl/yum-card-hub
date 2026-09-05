@@ -58,15 +58,15 @@ export const createOrder = createServerFn({ method: "POST" })
         customer_phone: data.customer_phone,
         type: data.type,
         payment: data.payment,
-        change_for: data.change_for,
-        street: data.street,
-        number_addr: data.number_addr,
-        district: data.district,
-        reference: data.reference,
+        change_for: data.change_for ? Number(String(data.change_for).replace(/[^0-9,.]/g, "").replace(",", ".")) : null,
+        street: data.street ?? null,
+        number_addr: data.number_addr ?? null,
+        district: data.district ?? null,
+        reference: data.reference ?? null,
         total: data.total,
         status: "novos",
       })
-      .select("number")
+      .select("id, number")
       .single();
 
     if (orderError || !order) {
