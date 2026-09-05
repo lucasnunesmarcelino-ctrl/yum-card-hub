@@ -181,6 +181,42 @@ export type Database = {
           },
         ]
       }
+      settings: {
+        Row: {
+          banner_url: string | null
+          created_at: string
+          hours: string
+          id: string
+          is_open: boolean
+          logo_url: string | null
+          name: string
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          banner_url?: string | null
+          created_at?: string
+          hours?: string
+          id?: string
+          is_open?: boolean
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+          whatsapp?: string
+        }
+        Update: {
+          banner_url?: string | null
+          created_at?: string
+          hours?: string
+          id?: string
+          is_open?: boolean
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
