@@ -6,9 +6,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { formatBRL, restaurant, type Product } from "@/data/menu";
+import { formatBRL, type Product, type Settings } from "@/data/menu";
+import { createOrder } from "@/lib/orders.functions";
 import { cn } from "@/lib/utils";
 
 export type CheckoutItem = {
@@ -23,6 +23,8 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   items: CheckoutItem[];
   total: number;
+  settings: Settings;
+  onSent?: () => void;
 };
 
 type OrderType = "entrega" | "retirada";
@@ -43,11 +45,7 @@ const maskPhone = (value: string) => {
 };
 
 const baseSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Informe seu nome completo")
-    .max(80, "Nome muito longo"),
+  name: z.string().trim().min(2, "Informe seu nome completo").max(80, "Nome muito longo"),
   phone: z
     .string()
     .trim()
@@ -59,9 +57,10 @@ const baseSchema = z.object({
   changeFor: z.string().trim().max(20).optional(),
 });
 
-export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
+export function CheckoutSheet({ open, onOpenChange, items, total, settings, onSent }: Props) {
   const [orderType, setOrderType] = useState<OrderType>("entrega");
   const [payment, setPayment] = useState<Payment>("pix");
+  const [sending, setSending] = useState(false);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -85,11 +84,7 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
           if (!data.number?.trim())
             ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["number"], message: "Informe o número" });
           if (!data.district?.trim())
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ["district"],
-              message: "Informe o bairro",
-            });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["district"], message: "Informe o bairro" });
         }
       }),
     [orderType],
@@ -97,14 +92,13 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
 
   const buildMessage = (data: z.infer<typeof baseSchema>) => {
     const lines: string[] = [];
-    lines.push(`📋 *NOVO PEDIDO - ${restaurant.name.toUpperCase()}*`);
+    lines.push(`📋 *NOVO PEDIDO - ${settings.name.toUpperCase()}*`);
     lines.push("----------------------------------");
     lines.push(`*Cliente:* ${data.name}`);
     lines.push(`*Telefone:* ${data.phone}`);
     lines.push(`*Tipo:* ${orderType === "entrega" ? "Entrega" : "Retirada no Balcão"}`);
     if (orderType === "entrega") {
-      const address = `${data.street}, ${data.number} - ${data.district}`;
-      lines.push(`*Endereço:* ${address}`);
+      lines.push(`*Endereço:* ${data.street}, ${data.number} - ${data.district}`);
       if (data.reference?.trim()) lines.push(`*Referência:* ${data.reference}`);
     }
     lines.push("");
@@ -123,7 +117,11 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
     return lines.join("\n");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!settings.isOpen) {
+      toast.error("O restaurante está fechado no momento.");
+      return;
+    }
     const result = schema.safeParse(form);
     if (!result.success) {
       const next: Record<string, string> = {};
@@ -136,15 +134,53 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
       return;
     }
     setErrors({});
-    const message = buildMessage(result.data);
-    const url = `https://wa.me/${restaurant.whatsapp}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const data = result.data;
+    const message = buildMessage(data);
+    const url = `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(message)}`;
+    const win = window.open("", "_blank", "noopener,noreferrer");
+
+    setSending(true);
+    try {
+      await createOrder({
+        data: {
+          customer_name: data.name,
+          customer_phone: data.phone,
+          type: orderType,
+          payment,
+          change_for:
+            payment === "dinheiro" && data.changeFor?.trim()
+              ? Number(data.changeFor.replace(/[^0-9,.]/g, "").replace(",", "."))
+              : null,
+          street: orderType === "entrega" ? (data.street ?? null) : null,
+          number_addr: orderType === "entrega" ? (data.number ?? null) : null,
+          district: orderType === "entrega" ? (data.district ?? null) : null,
+          reference: orderType === "entrega" ? (data.reference ?? null) : null,
+          total,
+          items: items.map((item) => ({
+            product_id: item.product.id,
+            name: item.product.name,
+            quantity: item.quantity,
+            price: item.product.price,
+            notes: item.notes,
+          })),
+        },
+      });
+    } catch {
+      // O envio pelo WhatsApp continua mesmo se o registro falhar.
+    } finally {
+      setSending(false);
+    }
+
+    if (win) win.location.href = url;
+    else window.open(url, "_blank", "noopener,noreferrer");
+
+    onOpenChange(false);
+    onSent?.();
+    toast.success("Pedido enviado para o WhatsApp!");
   };
 
   const field = (key: string) =>
-    errors[key] ? (
-      <p className="mt-1 text-xs font-medium text-destructive">{errors[key]}</p>
-    ) : null;
+    errors[key] ? <p className="mt-1 text-xs font-medium text-destructive">{errors[key]}</p> : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -223,7 +259,7 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
                       "rounded-xl border px-3 py-3 text-sm font-semibold transition-colors",
                       orderType === type
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-muted",
+                        : "border-border text-muted-foreground",
                     )}
                   >
                     {type === "entrega" ? "Entrega" : "Retirada no Balcão"}
@@ -233,15 +269,13 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
             </div>
 
             {orderType === "entrega" && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
                   <Label htmlFor="ck-street">Rua</Label>
                   <Input
                     id="ck-street"
                     value={form.street}
-                    maxLength={120}
                     onChange={(e) => set("street")(e.target.value)}
-                    placeholder="Rua das Flores"
                     className="mt-1.5 h-11"
                   />
                   {field("street")}
@@ -251,9 +285,7 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
                   <Input
                     id="ck-number"
                     value={form.number}
-                    maxLength={20}
                     onChange={(e) => set("number")(e.target.value)}
-                    placeholder="123"
                     className="mt-1.5 h-11"
                   />
                   {field("number")}
@@ -263,21 +295,18 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
                   <Input
                     id="ck-district"
                     value={form.district}
-                    maxLength={80}
                     onChange={(e) => set("district")(e.target.value)}
-                    placeholder="Centro"
                     className="mt-1.5 h-11"
                   />
                   {field("district")}
                 </div>
-                <div className="sm:col-span-2">
+                <div className="col-span-2">
                   <Label htmlFor="ck-reference">Ponto de referência</Label>
                   <Input
                     id="ck-reference"
                     value={form.reference}
-                    maxLength={120}
                     onChange={(e) => set("reference")(e.target.value)}
-                    placeholder="Próximo à praça"
+                    placeholder="Opcional"
                     className="mt-1.5 h-11"
                   />
                 </div>
@@ -287,26 +316,23 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
 
           <section className="space-y-3">
             <h3 className="text-sm font-black tracking-tight">Forma de pagamento</h3>
-            <RadioGroup
-              value={payment}
-              onValueChange={(v) => setPayment(v as Payment)}
-              className="grid gap-2"
-            >
+            <div className="grid grid-cols-3 gap-2">
               {(Object.keys(paymentLabels) as Payment[]).map((key) => (
-                <Label
+                <button
                   key={key}
-                  htmlFor={`pay-${key}`}
+                  type="button"
+                  onClick={() => setPayment(key)}
                   className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-colors",
-                    payment === key ? "border-primary bg-primary/10" : "border-border",
+                    "rounded-xl border px-2 py-3 text-xs font-semibold transition-colors",
+                    payment === key
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground",
                   )}
                 >
-                  <RadioGroupItem id={`pay-${key}`} value={key} />
                   {paymentLabels[key]}
-                </Label>
+                </button>
               ))}
-            </RadioGroup>
-
+            </div>
             {payment === "dinheiro" && (
               <div>
                 <Label htmlFor="ck-change">Precisa de troco para quanto?</Label>
@@ -314,8 +340,7 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
                   id="ck-change"
                   inputMode="decimal"
                   value={form.changeFor}
-                  maxLength={20}
-                  onChange={(e) => set("changeFor")(e.target.value.replace(/[^\d.,]/g, ""))}
+                  onChange={(e) => set("changeFor")(e.target.value)}
                   placeholder="Ex: 100,00"
                   className="mt-1.5 h-11"
                 />
@@ -324,10 +349,11 @@ export function CheckoutSheet({ open, onOpenChange, items, total }: Props) {
           </section>
 
           <Button
+            className="h-13 w-full rounded-full py-4 text-base font-bold"
             onClick={handleSubmit}
-            className="h-13 w-full gap-2 rounded-full py-4 text-base font-bold"
+            disabled={sending || items.length === 0 || !settings.isOpen}
           >
-            <MessageCircle className="h-5 w-5" />
+            <MessageCircle className="mr-2 h-5 w-5" />
             Confirmar e Enviar Pedido no WhatsApp
           </Button>
         </div>
