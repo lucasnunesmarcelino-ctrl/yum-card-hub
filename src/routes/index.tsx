@@ -1,53 +1,46 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { Clock, Search, Trash2 } from "lucide-react";
+import { Clock, Search, Settings2, Trash2 } from "lucide-react";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 
-import banner from "@/assets/banner.jpg";
-import logo from "@/assets/logo.png";
 import { CartBar } from "@/components/menu/CartBar";
 import { CheckoutSheet } from "@/components/menu/CheckoutSheet";
-
 import { ProductCard } from "@/components/menu/ProductCard";
 import { ProductModal } from "@/components/menu/ProductModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { formatBRL, restaurant, type Category, type Product } from "@/data/menu";
+import { formatBRL, type Category, type Product } from "@/data/menu";
 import { getCategories, getProducts } from "@/lib/menu.functions";
+import { getSettings } from "@/lib/settings.functions";
 import { cn } from "@/lib/utils";
 
-const categoriesQuery = () =>
-  queryOptions({
-    queryKey: ["categories"],
-    queryFn: () => getCategories(),
-  });
-
-const productsQuery = () =>
-  queryOptions({
-    queryKey: ["products"],
-    queryFn: () => getProducts(),
-  });
+const categoriesQuery = () => queryOptions({ queryKey: ["categories"], queryFn: () => getCategories() });
+const productsQuery = () => queryOptions({ queryKey: ["products"], queryFn: () => getProducts() });
+const settingsQuery = () => queryOptions({ queryKey: ["settings"], queryFn: () => getSettings() });
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Brasa & Bun — Cardápio Digital de Hambúrgueres" },
+      { title: "Cardápio Digital — Peça pelo WhatsApp" },
       {
         name: "description",
         content:
-          "Peça hambúrgueres artesanais, porções, bebidas e sobremesas pelo cardápio digital do Brasa & Bun. Entrega rápida e pedido direto pelo celular.",
+          "Veja o cardápio completo, escolha seus produtos, adicione observações e envie o pedido direto pelo WhatsApp do restaurante.",
       },
-      { property: "og:title", content: "Brasa & Bun — Cardápio Digital" },
+      { property: "og:title", content: "Cardápio Digital — Peça pelo WhatsApp" },
       {
         property: "og:description",
-        content: "Hambúrgueres artesanais, porções e sobremesas. Faça seu pedido em segundos.",
+        content: "Escolha seus produtos e envie o pedido direto pelo WhatsApp do restaurante.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(categoriesQuery());
     context.queryClient.ensureQueryData(productsQuery());
+    context.queryClient.ensureQueryData(settingsQuery());
   },
   component: Menu,
 });
@@ -62,6 +55,7 @@ type CartItem = {
 function Menu() {
   const { data: categories } = useSuspenseQuery(categoriesQuery());
   const { data: products } = useSuspenseQuery(productsQuery());
+  const { data: settings } = useSuspenseQuery(settingsQuery());
 
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
@@ -92,13 +86,8 @@ function Menu() {
 
   const groupedByCategory = useMemo(() => {
     const map = new Map<string, { category: Category; items: Product[] }>();
-    for (const c of categories) {
-      map.set(c.id, { category: c, items: [] });
-    }
-    for (const p of filtered) {
-      const group = map.get(p.categoryId);
-      if (group) group.items.push(p);
-    }
+    for (const c of categories) map.set(c.id, { category: c, items: [] });
+    for (const p of filtered) map.get(p.categoryId)?.items.push(p);
     return Array.from(map.values()).filter((g) => g.items.length > 0);
   }, [filtered, categories]);
 
@@ -107,49 +96,56 @@ function Menu() {
       <header>
         <div className="relative h-36 w-full overflow-hidden sm:h-48">
           <img
-            src={banner}
-            alt={`Fachada do restaurante ${restaurant.name}`}
-            width={1536}
-            height={640}
+            src={settings.banner}
+            alt={`Fachada do restaurante ${settings.name}`}
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <Link
+            to="/admin"
+            aria-label="Painel do restaurante"
+            className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Link>
         </div>
 
         <div className="mx-auto max-w-4xl px-4">
           <div className="flex flex-col items-center sm:flex-row sm:items-end sm:gap-4">
             <img
-              src={logo}
-              alt={`Logo ${restaurant.name}`}
-              loading="lazy"
-              width={512}
-              height={512}
-              className="relative z-10 -mt-10 h-20 w-20 rounded-full border-4 border-background bg-background object-contain shadow-md sm:-mt-14 sm:h-28 sm:w-28"
+              src={settings.logo}
+              alt={`Logo ${settings.name}`}
+              className="relative z-10 -mt-10 h-20 w-20 rounded-full border-4 border-background bg-background object-cover shadow-md sm:-mt-14 sm:h-28 sm:w-28"
             />
             <div className="mt-3 text-center sm:mt-0 sm:text-left">
-              <h1 className="text-xl font-black tracking-tight">{restaurant.name}</h1>
+              <h1 className="text-xl font-black tracking-tight">{settings.name}</h1>
               <p className="mt-0.5 flex items-center justify-center gap-1.5 text-sm text-muted-foreground sm:justify-start">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
-                <span>{restaurant.hours}</span>
+                <span>{settings.hours}</span>
               </p>
               <span
                 className={cn(
                   "mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-                  restaurant.open
-                    ? "bg-primary/10 text-primary"
-                    : "bg-destructive/10 text-destructive",
+                  settings.isOpen ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive",
                 )}
               >
                 <span
                   className={cn(
                     "h-1.5 w-1.5 rounded-full",
-                    restaurant.open ? "bg-primary" : "bg-destructive",
+                    settings.isOpen ? "bg-primary" : "bg-destructive",
                   )}
                 />
-                {restaurant.open ? "Aberto Agora" : "Fechado"}
+                {settings.isOpen ? "Aberto Agora" : "Fechado"}
               </span>
             </div>
           </div>
+
+          {!settings.isOpen && (
+            <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-center text-sm font-semibold text-destructive">
+              Estamos fechados no momento. Você pode ver o cardápio, mas não é possível enviar
+              pedidos agora.
+            </div>
+          )}
 
           <div className="relative mt-4">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -253,9 +249,14 @@ function Menu() {
               <span>Total</span>
               <span>{formatBRL(total)}</span>
             </div>
+            {!settings.isOpen && (
+              <p className="text-center text-xs font-semibold text-destructive">
+                Restaurante fechado — pedidos indisponíveis.
+              </p>
+            )}
             <Button
               className="h-12 w-full rounded-full text-base font-bold"
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || !settings.isOpen}
               onClick={() => {
                 setCartOpen(false);
                 setCheckoutOpen(true);
@@ -272,6 +273,8 @@ function Menu() {
         onOpenChange={setCheckoutOpen}
         items={cart}
         total={total}
+        settings={settings}
+        onSent={() => setCart([])}
       />
     </main>
   );
