@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatBRL, type Product, type Settings } from "@/data/menu";
 import { createOrder } from "@/lib/orders.functions";
+import { getSettings } from "@/lib/settings.functions";
 import { cn } from "@/lib/utils";
 
 export type CheckoutItem = {
