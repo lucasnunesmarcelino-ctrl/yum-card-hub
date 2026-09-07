@@ -149,8 +149,7 @@ export function CheckoutSheet({ open, onOpenChange, items, total, settings, onSe
 
     const mensagem = buildMessage(data);
     const mensagemCodificada = encodeURIComponent(mensagem);
-    const url = `https://api.whatsapp.com/send?phone=${phone}&text=${mensagemCodificada}`;
-    const win = window.open("", "_blank", "noopener,noreferrer");
+    const url = `https://wa.me/${phone}?text=${mensagemCodificada}`;
 
     setSending(true);
     try {
@@ -184,12 +183,10 @@ export function CheckoutSheet({ open, onOpenChange, items, total, settings, onSe
       setSending(false);
     }
 
-    if (win) win.location.href = url;
-    else window.open(url, "_blank", "noopener,noreferrer");
-
     onOpenChange(false);
     onSent?.();
     toast.success("Pedido enviado para o WhatsApp!");
+    window.location.href = url;
   };
 
   const field = (key: string) =>
