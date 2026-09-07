@@ -11,6 +11,12 @@ const orderItemSchema = z.object({
   notes: z.string().default(""),
 });
 
+const paymentDbLabel = {
+  pix: "Pix",
+  cartao: "Cartão",
+  dinheiro: "Dinheiro",
+} as const;
+
 const createOrderSchema = z.object({
   customer_name: z.string().trim().min(2),
   customer_phone: z.string().trim().min(1),
@@ -36,7 +42,7 @@ export const createOrder = createServerFn({ method: "POST" })
         customer_name: data.customer_name,
         customer_phone: data.customer_phone,
         type: data.type,
-        payment: data.payment,
+        payment: paymentDbLabel[data.payment],
         change_for: data.change_for ?? null,
         street: data.street ?? null,
         number_addr: data.number_addr ?? null,
