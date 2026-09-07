@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatBRL, type Product, type Settings } from "@/data/menu";
 import { createOrder } from "@/lib/orders.functions";
+import { getSettings } from "@/lib/settings.functions";
 import { cn } from "@/lib/utils";
 
 export type CheckoutItem = {
@@ -135,8 +136,20 @@ export function CheckoutSheet({ open, onOpenChange, items, total, settings, onSe
     }
     setErrors({});
     const data = result.data;
-    const message = buildMessage(data);
-    const url = `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(message)}`;
+
+    // Busca o WhatsApp atual cadastrado no painel (sempre do banco, nunca fixo no código).
+    let whatsapp = settings.whatsapp;
+    try {
+      const fresh = await getSettings();
+      if (fresh.whatsapp) whatsapp = fresh.whatsapp;
+    } catch {
+      // Mantém o número já carregado se a busca falhar.
+    }
+    const phone = whatsapp.replace(/\D/g, "");
+
+    const mensagem = buildMessage(data);
+    const mensagemCodificada = encodeURIComponent(mensagem);
+    const url = `https://api.whatsapp.com/send?phone=${phone}&text=${mensagemCodificada}`;
     const win = window.open("", "_blank", "noopener,noreferrer");
 
     setSending(true);
