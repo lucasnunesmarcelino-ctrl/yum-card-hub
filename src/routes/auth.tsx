@@ -75,15 +75,8 @@ function AuthPage() {
           />
         </div>
         <Button type="submit" disabled={loading} className="h-11 w-full rounded-full font-bold">
-          {mode === "login" ? "Entrar" : "Criar conta"}
+          Entrar
         </Button>
-        <button
-          type="button"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-          className="w-full text-center text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
-        >
-          {mode === "login" ? "Ainda não tenho acesso" : "Já tenho acesso"}
-        </button>
       </form>
     </main>
   );
