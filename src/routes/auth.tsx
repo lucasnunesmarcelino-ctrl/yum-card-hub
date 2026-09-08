@@ -23,7 +23,6 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,20 +31,9 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: "/admin" });
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${window.location.origin}/admin` },
-        });
-        if (error) throw error;
-        toast.success("Conta criada! Faça login para continuar.");
-        setMode("login");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      navigate({ to: "/admin" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível entrar");
     } finally {
@@ -61,9 +49,7 @@ function AuthPage() {
       >
         <div>
           <h1 className="text-xl font-black tracking-tight">Área do restaurante</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "login" ? "Entre para gerenciar seu cardápio." : "Crie o acesso do restaurante."}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Entre para gerenciar seu cardápio.</p>
         </div>
         <div>
           <Label htmlFor="email">E-mail</Label>
@@ -89,15 +75,8 @@ function AuthPage() {
           />
         </div>
         <Button type="submit" disabled={loading} className="h-11 w-full rounded-full font-bold">
-          {mode === "login" ? "Entrar" : "Criar conta"}
+          Entrar
         </Button>
-        <button
-          type="button"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-          className="w-full text-center text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
-        >
-          {mode === "login" ? "Ainda não tenho acesso" : "Já tenho acesso"}
-        </button>
       </form>
     </main>
   );
