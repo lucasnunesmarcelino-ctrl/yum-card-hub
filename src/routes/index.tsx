@@ -101,13 +101,6 @@ function Menu() {
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <Link
-            to="/admin"
-            aria-label="Painel do restaurante"
-            className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur"
-          >
-            <Settings2 className="h-4 w-4" />
-          </Link>
         </div>
 
         <div className="mx-auto max-w-4xl px-4">
