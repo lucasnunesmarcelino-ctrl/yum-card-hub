@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { Clock, Search, Settings2, Trash2 } from "lucide-react";
+import { Clock, Search, Trash2 } from "lucide-react";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 
 import { CartBar } from "@/components/menu/CartBar";
