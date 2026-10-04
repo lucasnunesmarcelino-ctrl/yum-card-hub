@@ -339,7 +339,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_business_id: { Args: never; Returns: string }
+      resolve_active_business_by_slug: {
+        Args: { _slug: string }
+        Returns: {
+          id: string
+          slug: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
