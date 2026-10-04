@@ -24,6 +24,8 @@ export type Category = {
 
 export type Settings = {
   id: string;
+  businessId: string;
+  slug: string;
   name: string;
   logo: string;
   banner: string;
