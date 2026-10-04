@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep tenant ownership additive through `business_id` on restaurant-scoped records; it remains nullable until tenant-aware reads, writes, and RLS ship together, preventing regressions in the current single-restaurant flow.
