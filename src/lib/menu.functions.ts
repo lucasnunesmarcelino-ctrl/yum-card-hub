@@ -33,13 +33,13 @@ export const getCategories = createServerFn({ method: "GET" })
   const business = await resolvePublicBusiness(data.slug);
   if (!business) throw new Error("Restaurante não encontrado");
   const supabase = publicClient();
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("categories")
     .select("*")
     .eq("business_id", business.id)
     .order("sort_order", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map(toCategory);
+  return (rows ?? []).map(toCategory);
 });
 
 /** Public menu: only available products. */
@@ -49,14 +49,14 @@ export const getProducts = createServerFn({ method: "GET" })
   const business = await resolvePublicBusiness(data.slug);
   if (!business) throw new Error("Restaurante não encontrado");
   const supabase = publicClient();
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("products")
     .select("*")
     .eq("business_id", business.id)
     .eq("available", true)
     .order("sort_order", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map(toProduct);
+  return (rows ?? []).map(toProduct);
 });
 
 /** Admin: every product, including hidden ones. */
