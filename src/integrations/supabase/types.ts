@@ -14,8 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      business_members: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_members_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
+          business_id: string | null
           created_at: string
           id: string
           name: string
@@ -23,6 +83,7 @@ export type Database = {
           sort_order: number
         }
         Insert: {
+          business_id?: string | null
           created_at?: string
           id?: string
           name: string
@@ -30,13 +91,22 @@ export type Database = {
           sort_order?: number
         }
         Update: {
+          business_id?: string | null
           created_at?: string
           id?: string
           name?: string
           slug?: string
           sort_order?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -88,6 +158,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          business_id: string | null
           change_for: number | null
           created_at: string
           customer_name: string
@@ -104,6 +175,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          business_id?: string | null
           change_for?: number | null
           created_at?: string
           customer_name: string
@@ -120,6 +192,7 @@ export type Database = {
           type: string
         }
         Update: {
+          business_id?: string | null
           change_for?: number | null
           created_at?: string
           customer_name?: string
@@ -135,11 +208,35 @@ export type Database = {
           total?: number
           type?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "orders_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
         Relationships: []
       }
       products: {
         Row: {
           available: boolean
+          business_id: string | null
           category_id: string
           created_at: string
           description: string
@@ -151,6 +248,7 @@ export type Database = {
         }
         Insert: {
           available?: boolean
+          business_id?: string | null
           category_id: string
           created_at?: string
           description?: string
@@ -162,6 +260,7 @@ export type Database = {
         }
         Update: {
           available?: boolean
+          business_id?: string | null
           category_id?: string
           created_at?: string
           description?: string
@@ -172,6 +271,13 @@ export type Database = {
           sort_order?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "products_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]
@@ -184,6 +290,7 @@ export type Database = {
       settings: {
         Row: {
           banner_url: string | null
+          business_id: string | null
           created_at: string
           hours: string
           id: string
@@ -195,6 +302,7 @@ export type Database = {
         }
         Insert: {
           banner_url?: string | null
+          business_id?: string | null
           created_at?: string
           hours?: string
           id?: string
@@ -206,6 +314,7 @@ export type Database = {
         }
         Update: {
           banner_url?: string | null
+          business_id?: string | null
           created_at?: string
           hours?: string
           id?: string
@@ -215,7 +324,15 @@ export type Database = {
           updated_at?: string
           whatsapp?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "settings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
