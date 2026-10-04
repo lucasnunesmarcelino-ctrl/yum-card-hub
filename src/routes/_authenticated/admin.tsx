@@ -18,12 +18,12 @@ import {
   deleteCategory,
   deleteProduct,
   getAllProducts,
-  getCategories,
+  getAdminCategories,
   saveCategory,
   saveProduct,
   toggleProduct,
 } from "@/lib/menu.functions";
-import { getSettings, updateSettings } from "@/lib/settings.functions";
+import { getAdminSettings, updateSettings } from "@/lib/settings.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -41,9 +41,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type AdminProduct = Awaited<ReturnType<typeof getAllProducts>>[number];
 
-async function uploadImage(file: File, folder: string) {
+async function uploadImage(file: File, folder: string, businessId: string) {
   const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+  const path = `${businessId}/${folder}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from("branding").upload(path, file, {
     cacheControl: "31536000",
     upsert: false,
@@ -57,12 +57,14 @@ function ImageField({
   value,
   fallback,
   folder,
+  businessId,
   onChange,
 }: {
   label: string;
   value: string | null;
   fallback: string;
   folder: string;
+  businessId: string;
   onChange: (path: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +89,7 @@ function ImageField({
             if (!file) return;
             setBusy(true);
             try {
-              onChange(await uploadImage(file, folder));
+              onChange(await uploadImage(file, folder, businessId));
               toast.success("Imagem enviada");
             } catch (error) {
               toast.error(error instanceof Error ? error.message : "Falha no envio");
@@ -110,8 +112,8 @@ function Admin() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const fetchSettings = useServerFn(getSettings);
-  const fetchCategories = useServerFn(getCategories);
+  const fetchSettings = useServerFn(getAdminSettings);
+  const fetchCategories = useServerFn(getAdminCategories);
   const fetchProducts = useServerFn(getAllProducts);
 
   const settingsQ = useQuery({ queryKey: ["admin-settings"], queryFn: () => fetchSettings() });
@@ -302,6 +304,7 @@ function Admin() {
                   value={form.logoPath}
                   fallback={form.logo}
                   folder="logo"
+                  businessId={form.businessId}
                   onChange={(path) => setForm({ ...form, logoPath: path })}
                 />
                 <ImageField
@@ -309,6 +312,7 @@ function Admin() {
                   value={form.bannerPath}
                   fallback={form.banner}
                   folder="banner"
+                  businessId={form.businessId}
                   onChange={(path) => setForm({ ...form, bannerPath: path })}
                 />
 
@@ -549,6 +553,7 @@ function Admin() {
                 value={prodDialog.image_url}
                 fallback={resolveImage(prodDialog.image_url, "")}
                 folder="produtos"
+                businessId={form?.businessId ?? "unscoped"}
                 onChange={(path) => setProdDialog({ ...prodDialog, image_url: path })}
               />
 

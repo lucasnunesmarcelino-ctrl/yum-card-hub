@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { defaultBanner, defaultLogo, resolveImage, type Settings } from "@/data/menu";
+import { getAdminClient, resolveAuthenticatedBusiness, resolvePublicBusiness } from "@/lib/tenant.server";
 
 export function publicClient() {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? process.env["SUPABASE_ANON_KEY"]!;
@@ -23,9 +24,14 @@ export function publicClient() {
   });
 }
 
-function toSettings(row: Database["public"]["Tables"]["settings"]["Row"]): Settings {
+function toSettings(
+  row: Database["public"]["Tables"]["settings"]["Row"],
+  business: { id: string; slug: string },
+): Settings {
   return {
     id: row.id,
+    businessId: business.id,
+    slug: business.slug,
     name: row.name,
     logo: resolveImage(row.logo_url, defaultLogo),
     banner: resolveImage(row.banner_url, defaultBanner),
@@ -37,30 +43,38 @@ function toSettings(row: Database["public"]["Tables"]["settings"]["Row"]): Setti
   };
 }
 
-export const getSettings = createServerFn({ method: "GET" }).handler(async (): Promise<Settings> => {
+const publicSettingsInput = z.object({ slug: z.string().trim().min(1).max(120) });
+
+export const getSettings = createServerFn({ method: "GET" })
+  .inputValidator((input) => publicSettingsInput.parse(input))
+  .handler(async ({ data }): Promise<Settings> => {
+  const business = await resolvePublicBusiness(data.slug);
+  if (!business) throw new Error("Restaurante não encontrado");
   const supabase = publicClient();
-  const { data, error } = await supabase
+  const { data: settings, error } = await supabase
     .from("settings")
     .select("*")
-    .order("created_at", { ascending: true })
-    .limit(1)
+    .eq("business_id", business.id)
     .maybeSingle();
   if (error) throw error;
-  if (!data) {
-    return {
-      id: "",
-      name: "Meu Restaurante",
-      logo: defaultLogo,
-      banner: defaultBanner,
-      logoPath: null,
-      bannerPath: null,
-      whatsapp: "5585999999999",
-      hours: "Ter a Dom · 18h00 às 23h30",
-      isOpen: true,
-    };
-  }
-  return toSettings(data);
+  if (!settings) throw new Error("Configurações do restaurante não encontradas");
+  return toSettings(settings, business);
 });
+
+export const getAdminSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<Settings> => {
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
+    const { data, error } = await supabaseAdmin
+      .from("settings")
+      .select("*")
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error("Configurações do restaurante não encontradas");
+    return toSettings(data, business);
+  });
 
 const settingsSchema = z.object({
   id: z.string().min(1),
@@ -76,8 +90,10 @@ export const updateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => settingsSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
     const { id, ...rest } = data;
-    const { data: row, error } = await context.supabase
+    const { data: row, error } = await supabaseAdmin
       .from("settings")
       .update({
         name: rest.name,
@@ -88,8 +104,10 @@ export const updateSettings = createServerFn({ method: "POST" })
         banner_url: rest.banner_url ?? null,
       })
       .eq("id", id)
+      .eq("business_id", business.id)
       .select("*")
-      .single();
+      .maybeSingle();
     if (error) throw error;
-    return toSettings(row);
+    if (!row) throw new Error("Configurações não encontradas para este restaurante");
+    return toSettings(row, business);
   });

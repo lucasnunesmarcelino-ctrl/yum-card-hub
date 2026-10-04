@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { imageMap, resolveImage, type Category, type Product } from "@/data/menu";
 import { publicClient } from "@/lib/settings.functions";
+import { getAdminClient, resolveAuthenticatedBusiness, resolvePublicBusiness } from "@/lib/tenant.server";
 
 const fallbackImage = imageMap["burger"] as string;
 
@@ -24,35 +25,50 @@ function toCategory(row: Database["public"]["Tables"]["categories"]["Row"]): Cat
   return { id: row.id, name: row.name, slug: row.slug, sortOrder: row.sort_order };
 }
 
-export const getCategories = createServerFn({ method: "GET" }).handler(async () => {
+const publicMenuInput = z.object({ slug: z.string().trim().min(1).max(120) });
+
+export const getCategories = createServerFn({ method: "GET" })
+  .inputValidator((input) => publicMenuInput.parse(input))
+  .handler(async ({ data }) => {
+  const business = await resolvePublicBusiness(data.slug);
+  if (!business) throw new Error("Restaurante não encontrado");
   const supabase = publicClient();
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("categories")
     .select("*")
+    .eq("business_id", business.id)
     .order("sort_order", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map(toCategory);
+  return (rows ?? []).map(toCategory);
 });
 
 /** Public menu: only available products. */
-export const getProducts = createServerFn({ method: "GET" }).handler(async () => {
+export const getProducts = createServerFn({ method: "GET" })
+  .inputValidator((input) => publicMenuInput.parse(input))
+  .handler(async ({ data }) => {
+  const business = await resolvePublicBusiness(data.slug);
+  if (!business) throw new Error("Restaurante não encontrado");
   const supabase = publicClient();
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("products")
     .select("*")
+    .eq("business_id", business.id)
     .eq("available", true)
     .order("sort_order", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map(toProduct);
+  return (rows ?? []).map(toProduct);
 });
 
 /** Admin: every product, including hidden ones. */
 export const getAllProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
+    const { data, error } = await supabaseAdmin
       .from("products")
       .select("*")
+      .eq("business_id", business.id)
       .order("sort_order", { ascending: true });
     if (error) throw error;
     return (data ?? []).map((row) => ({ ...toProduct(row), imagePath: row.image_url }));
@@ -68,19 +84,28 @@ export const saveCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => categoryInput.parse(input))
   .handler(async ({ data, context }) => {
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
     const slug = data.name
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    const payload = { name: data.name, slug, sort_order: data.sort_order };
+    const payload = { name: data.name, slug, sort_order: data.sort_order, business_id: business.id };
     if (data.id) {
-      const { error } = await context.supabase.from("categories").update(payload).eq("id", data.id);
+      const { data: row, error } = await supabaseAdmin
+        .from("categories")
+        .update(payload)
+        .eq("id", data.id)
+        .eq("business_id", business.id)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      if (!row) throw new Error("Categoria não encontrada para este restaurante");
       return { ok: true };
     }
-    const { error } = await context.supabase.from("categories").insert(payload);
+    const { error } = await supabaseAdmin.from("categories").insert(payload);
     if (error) throw error;
     return { ok: true };
   });
@@ -89,8 +114,17 @@ export const deleteCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("categories").delete().eq("id", data.id);
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
+    const { data: row, error } = await supabaseAdmin
+      .from("categories")
+      .delete()
+      .eq("id", data.id)
+      .eq("business_id", business.id)
+      .select("id")
+      .maybeSingle();
     if (error) throw error;
+    if (!row) throw new Error("Categoria não encontrada para este restaurante");
     return { ok: true };
   });
 
@@ -109,6 +143,16 @@ export const saveProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => productInput.parse(input))
   .handler(async ({ data, context }) => {
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
+    const { data: category, error: categoryError } = await supabaseAdmin
+      .from("categories")
+      .select("id")
+      .eq("id", data.category_id)
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (categoryError) throw categoryError;
+    if (!category) throw new Error("Categoria inválida para este restaurante");
     const payload = {
       name: data.name,
       description: data.description,
@@ -117,13 +161,21 @@ export const saveProduct = createServerFn({ method: "POST" })
       image_url: data.image_url ?? null,
       available: data.available,
       sort_order: data.sort_order,
+      business_id: business.id,
     };
     if (data.id) {
-      const { error } = await context.supabase.from("products").update(payload).eq("id", data.id);
+      const { data: row, error } = await supabaseAdmin
+        .from("products")
+        .update(payload)
+        .eq("id", data.id)
+        .eq("business_id", business.id)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      if (!row) throw new Error("Produto não encontrado para este restaurante");
       return { ok: true };
     }
-    const { error } = await context.supabase.from("products").insert(payload);
+    const { error } = await supabaseAdmin.from("products").insert(payload);
     if (error) throw error;
     return { ok: true };
   });
@@ -132,8 +184,17 @@ export const deleteProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("products").delete().eq("id", data.id);
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
+    const { data: row, error } = await supabaseAdmin
+      .from("products")
+      .delete()
+      .eq("id", data.id)
+      .eq("business_id", business.id)
+      .select("id")
+      .maybeSingle();
     if (error) throw error;
+    if (!row) throw new Error("Produto não encontrado para este restaurante");
     return { ok: true };
   });
 
@@ -141,10 +202,30 @@ export const toggleProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string(), available: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
+    const { data: row, error } = await supabaseAdmin
       .from("products")
       .update({ available: data.available })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .eq("business_id", business.id)
+      .select("id")
+      .maybeSingle();
     if (error) throw error;
+    if (!row) throw new Error("Produto não encontrado para este restaurante");
     return { ok: true };
+  });
+
+export const getAdminCategories = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const business = await resolveAuthenticatedBusiness(context.userId);
+    const supabaseAdmin = await getAdminClient();
+    const { data, error } = await supabaseAdmin
+      .from("categories")
+      .select("*")
+      .eq("business_id", business.id)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map(toCategory);
   });

@@ -9,4 +9,5 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Keep tenant ownership additive through `business_id` on restaurant-scoped records; it remains nullable until tenant-aware reads, writes, and RLS ship together, preventing regressions in the current single-restaurant flow.
+- Resolve tenant identity server-side from authenticated membership for admin work and from active business slug for public work; never trust a client-supplied `business_id`.
+- Keep `business_id` nullable until the dedicated schema-hardening phase, preserving compatibility while all current reads and writes are tenant-scoped.
