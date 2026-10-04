@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { publicClient } from "@/lib/settings.functions";
+import { getAdminClient, resolvePublicBusiness } from "@/lib/tenant.server";
 
 const orderItemSchema = z.object({
   product_id: z.string(),
@@ -18,6 +19,7 @@ const paymentDbLabel = {
 } as const;
 
 const createOrderSchema = z.object({
+  slug: z.string().trim().min(1).max(120),
   customer_name: z.string().trim().min(2),
   customer_phone: z.string().trim().min(1),
   type: z.enum(["entrega", "retirada"]),
@@ -34,11 +36,43 @@ const createOrderSchema = z.object({
 export const createOrder = createServerFn({ method: "POST" })
   .inputValidator((input) => createOrderSchema.parse(input))
   .handler(async ({ data }) => {
-    const supabase = publicClient();
+    const business = await resolvePublicBusiness(data.slug);
+    if (!business) throw new Error("Restaurante não encontrado");
 
-    const { data: order, error: orderError } = await supabase
+    const productIds = [...new Set(data.items.map((item) => item.product_id))];
+    if (productIds.length !== data.items.length) throw new Error("Pedido contém produtos duplicados");
+
+    const supabaseAdmin = await getAdminClient();
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from("products")
+      .select("id, name, price")
+      .eq("business_id", business.id)
+      .eq("available", true)
+      .in("id", productIds);
+    if (productsError) throw productsError;
+    if (!products || products.length !== productIds.length) {
+      throw new Error("Um ou mais produtos não pertencem a este restaurante");
+    }
+
+    const productsById = new Map(products.map((product) => [product.id, product]));
+    const verifiedItems = data.items.map((item) => {
+      const product = productsById.get(item.product_id);
+      if (!product) throw new Error("Produto inválido");
+      return {
+        product_id: product.id,
+        name: product.name,
+        quantity: item.quantity,
+        price: Number(product.price),
+        notes: item.notes,
+      };
+    });
+    const verifiedTotal = verifiedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (Math.abs(verifiedTotal - data.total) > 0.009) throw new Error("O total do pedido mudou");
+
+    const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .insert({
+        business_id: business.id,
         customer_name: data.customer_name,
         customer_phone: data.customer_phone,
         type: data.type,
@@ -48,7 +82,7 @@ export const createOrder = createServerFn({ method: "POST" })
         number_addr: data.number_addr ?? null,
         district: data.district ?? null,
         reference: data.reference ?? null,
-        total: data.total,
+        total: verifiedTotal,
         status: "novos",
       })
       .select("id, number")
@@ -58,8 +92,8 @@ export const createOrder = createServerFn({ method: "POST" })
       throw new Error(orderError?.message ?? "Erro ao criar pedido");
     }
 
-    const { error: itemsError } = await supabase.from("order_items").insert(
-      data.items.map((item) => ({
+    const { error: itemsError } = await supabaseAdmin.from("order_items").insert(
+      verifiedItems.map((item) => ({
         order_id: order.id,
         product_id: item.product_id,
         name: item.name,
@@ -68,7 +102,10 @@ export const createOrder = createServerFn({ method: "POST" })
         notes: item.notes,
       })),
     );
-    if (itemsError) throw new Error(itemsError.message);
+    if (itemsError) {
+      await supabaseAdmin.from("orders").delete().eq("id", order.id).eq("business_id", business.id);
+      throw new Error(itemsError.message);
+    }
 
     return { number: order.number };
   });

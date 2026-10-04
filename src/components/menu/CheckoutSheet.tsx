@@ -140,7 +140,7 @@ export function CheckoutSheet({ open, onOpenChange, items, total, settings, onSe
     // Busca o WhatsApp atual cadastrado no painel (sempre do banco, nunca fixo no código).
     let whatsapp = settings.whatsapp;
     try {
-      const fresh = await getSettings();
+      const fresh = await getSettings({ data: { slug: settings.slug } });
       if (fresh.whatsapp) whatsapp = fresh.whatsapp;
     } catch {
       // Mantém o número já carregado se a busca falhar.
@@ -155,6 +155,7 @@ export function CheckoutSheet({ open, onOpenChange, items, total, settings, onSe
     try {
       await createOrder({
         data: {
+          slug: settings.slug,
           customer_name: data.name,
           customer_phone: data.phone,
           type: orderType,
@@ -177,8 +178,10 @@ export function CheckoutSheet({ open, onOpenChange, items, total, settings, onSe
           })),
         },
       });
-    } catch {
-      // O envio pelo WhatsApp continua mesmo se o registro falhar.
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o pedido");
+      setSending(false);
+      return;
     } finally {
       setSending(false);
     }
