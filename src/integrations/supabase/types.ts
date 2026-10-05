@@ -339,7 +339,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_business_access: { Args: { _business_id: string }; Returns: boolean }
+      has_business_role: {
+        Args: { _business_id: string; _roles: string[] }
+        Returns: boolean
+      }
+      is_active_business: { Args: { _business_id: string }; Returns: boolean }
+      is_platform_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
