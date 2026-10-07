@@ -8,4 +8,4 @@
 - [x] Adapt reads and writes to tenant scope, including public slug menus and tenant-bound orders.
 - [x] Replace broad access policies and anonymous order access with tenant isolation.
 - [x] Apply authenticated RLS to ordinary admin reads and writes.
-- [ ] Validate public checkout, admin access, isolation, counts, compilation, and runtime; stop after Phase C.
+- [x] Validate public checkout and WhatsApp redirect, authenticated admin access, transaction-reverted tenant/platform isolation, counts, compilation, and runtime; stop after Phase C.
