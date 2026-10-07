@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { imageMap, resolveImage, type Category, type Product } from "@/data/menu";
 import { publicClient } from "@/lib/settings.functions";
-import { getAdminClient, resolveAuthenticatedBusiness, resolvePublicBusiness } from "@/lib/tenant.server";
+import { resolveAuthenticatedBusiness, resolvePublicBusiness } from "@/lib/tenant.server";
 
 const fallbackImage = imageMap["burger"] as string;
 
@@ -63,8 +63,8 @@ export const getProducts = createServerFn({ method: "GET" })
 export const getAllProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const { data, error } = await supabaseAdmin
       .from("products")
       .select("*")
@@ -84,8 +84,8 @@ export const saveCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => categoryInput.parse(input))
   .handler(async ({ data, context }) => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const slug = data.name
       .toLowerCase()
       .normalize("NFD")
@@ -114,8 +114,8 @@ export const deleteCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const { data: row, error } = await supabaseAdmin
       .from("categories")
       .delete()
@@ -143,8 +143,8 @@ export const saveProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => productInput.parse(input))
   .handler(async ({ data, context }) => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const { data: category, error: categoryError } = await supabaseAdmin
       .from("categories")
       .select("id")
@@ -184,8 +184,8 @@ export const deleteProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const { data: row, error } = await supabaseAdmin
       .from("products")
       .delete()
@@ -202,8 +202,8 @@ export const toggleProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string(), available: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const { data: row, error } = await supabaseAdmin
       .from("products")
       .update({ available: data.available })
@@ -219,8 +219,8 @@ export const toggleProduct = createServerFn({ method: "POST" })
 export const getAdminCategories = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const { data, error } = await supabaseAdmin
       .from("categories")
       .select("*")

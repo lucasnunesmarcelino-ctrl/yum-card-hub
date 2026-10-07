@@ -6,4 +6,6 @@
 - [x] Backfill every current restaurant-scoped record without deleting data.
 - [x] Validate counts, constraints, indexes, trigger, and application compilation.
 - [x] Adapt reads and writes to tenant scope, including public slug menus and tenant-bound orders.
-- [ ] Replace current broad access policies with tenant isolation — blocked until the user requests the security phase.
+- [x] Replace broad access policies and anonymous order access with tenant isolation.
+- [x] Apply authenticated RLS to ordinary admin reads and writes.
+- [ ] Validate public checkout, admin access, isolation, counts, compilation, and runtime; stop after Phase C.

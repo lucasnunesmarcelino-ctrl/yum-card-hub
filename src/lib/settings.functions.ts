@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { defaultBanner, defaultLogo, resolveImage, type Settings } from "@/data/menu";
-import { getAdminClient, resolveAuthenticatedBusiness, resolvePublicBusiness } from "@/lib/tenant.server";
+import { resolveAuthenticatedBusiness, resolvePublicBusiness } from "@/lib/tenant.server";
 
 export function publicClient() {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? process.env["SUPABASE_ANON_KEY"]!;
@@ -64,8 +64,8 @@ export const getSettings = createServerFn({ method: "GET" })
 export const getAdminSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<Settings> => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const { data, error } = await supabaseAdmin
       .from("settings")
       .select("*")
@@ -90,8 +90,8 @@ export const updateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => settingsSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const business = await resolveAuthenticatedBusiness(context.userId);
-    const supabaseAdmin = await getAdminClient();
+    const business = await resolveAuthenticatedBusiness(context.userId, context.supabase);
+    const supabaseAdmin = context.supabase;
     const { id, ...rest } = data;
     const { data: row, error } = await supabaseAdmin
       .from("settings")
