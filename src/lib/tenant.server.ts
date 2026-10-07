@@ -9,8 +9,8 @@ export type BusinessContext = {
   slug: string;
 };
 
-export async function resolveAuthenticatedBusiness(userId: string): Promise<BusinessContext> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+export async function resolveAuthenticatedBusiness(userId: string, client: AdminClient): Promise<BusinessContext> {
+  const supabaseAdmin = client;
   const { data: membership, error: membershipError } = await supabaseAdmin
     .from("business_members")
     .select("business_id")
